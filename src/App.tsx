@@ -1,25 +1,27 @@
 
-import { useEffect, useState } from "react";
-import { fetchPhotos } from "../src/services/api"
-import { InfinitySpin } from "react-loader-spinner";
+import { useEffect, useState, FormEvent } from "react";
+import { fetchPhotos } from "./services/api"
 
 import SearchBar from "./components/SearchBar/SearchBar";
 import ImageGallery from "./components/ImageGallery/ImageGallery";
 import ImageModal from "./components/ImageModal/ImageModal";
 import LoadMoreBtn from "./components/LoadMoreBtn/LoadMoreBtn";
 import ErrorMessage from "./components/ErrorMessage/ErrorMessage";
+import Loader from "./components/Loader/Loader";
 
 import { toast, Toaster } from 'react-hot-toast';
 
+import { Article, ModalImg } from "./types";
+
 const App = () => {
-  const [articles, setArticles] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [query, setQuery] = useState("");
-  const [page, setPage] = useState(1);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState<string>("");
+  const [page, setPage] = useState<number>(1);
   
-  const [modalIsOpen, setModalIsOpen] = useState(false);
-  const [modalImg, setModalImg] = useState(null);
+  const [modalIsOpen, setModalIsOpen] = useState<boolean>(false);
+  const [modalImg, setModalImg] = useState<ModalImg | null>(null);
 
   
   
@@ -36,7 +38,11 @@ const App = () => {
           setArticles(data); 
         }
       } catch (error) {
-        setError(error.message);
+        if (error instanceof Error) {
+    setError(error.message);
+  } else {
+    setError(String(error));
+  }
       } finally {
         setLoading(false);
       }
@@ -44,10 +50,13 @@ const App = () => {
     fetchPhotosBySearchValue();
   }, [query, page])
   
-  const openModal = article => {
+  const openModal = (article: Article) => {
     console.log('Image object:', article);
     setModalImg({
-      url: article.urls.regular,
+      urls: {
+      regular: article.urls.regular,
+      small: article.urls.small,
+    },
       description: article.description,
       likes: article.likes,
       author: article.user.name,
@@ -56,13 +65,13 @@ const App = () => {
     document.body.style.overflow = 'hidden';
   };
 
-  const closeModal = () => {
+  const closeModal = (): void => {
     setModalIsOpen(false);
     setModalImg(null);
     document.body.style.overflow = 'auto';
   };
 
-  const handleClick = () => {
+  const handleClick = (): void => {
       setPage(prevPage => prevPage + 1);
   };
   
@@ -72,10 +81,10 @@ const App = () => {
     };
   }, []);
 
-  const handleSubmit = (ev) => {
+  const handleSubmit = (ev: FormEvent<HTMLFormElement>) => {
     ev.preventDefault();
     const form = ev.currentTarget;
-    const searchTerm = form.elements.input.value.trim('');
+    const searchTerm = (form.elements.namedItem("input") as HTMLInputElement).value.trim();
     if (searchTerm === '') {
       toast.error('Enter a search word!');
       return;
@@ -94,10 +103,12 @@ const App = () => {
       </div>
       
       {loading && (
-        <div><InfinitySpin /></div>)}
+        <div><Loader isLoading={loading}/></div>)}
       {error && (<p>Error:&quot;{error}&quot</p>)}
      <ImageGallery articles={articles} onClick={openModal} />
-      {error && <ErrorMessage />}
+      {error && <ErrorMessage message={
+            "Whoops, something went wrong! Please try reloading this page!"
+          }/>}
       {modalIsOpen && (
         <ImageModal
           modalIsOpen={modalIsOpen}
